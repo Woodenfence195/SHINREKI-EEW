@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>震歴 SHINREKI · 地震纪年</title>
+<link rel="stylesheet" href="/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23070c14'/%3E%3Cpath d='M6 20h4l3-9 4 14 3-7h6' stroke='%2358e0d0' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="21" class="logo-ring"/>
+        <circle cx="24" cy="24" r="15" class="logo-ring dim"/>
+        <path d="M5 24h8l4-11 6 22 5-14 3 3h12" class="logo-wave"/>
+        <circle cx="24" cy="24" r="2.4" class="logo-dot"/>
+      </svg>
+      <div class="brand-text">
+        <div class="brand-name">震歴<span>SHINREKI</span></div>
+        <div class="brand-sub">SEISMIC CHRONICLE · 地震时间机器</div>
+      </div>
+    </div>
+
+    <div class="clock" title="日本標準時">
+      <div class="clock-time" id="jst-time">--:--:--</div>
+      <div class="clock-meta"><span id="jst-date">----</span><span class="sep">/</span><span>JST</span></div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="status-strip">
+        <button class="pill" id="status-kmoni" title="NIED 強震モニタ 实时震度"><i class="dot"></i><span class="pill-label">強震モニタ</span><span class="pill-value">--</span></button>
+        <button class="pill" id="status-p2p" title="P2PQuake 速報"><i class="dot"></i><span class="pill-label">P2P速報</span><span class="pill-value">--</span></button>
+        <button class="pill" id="status-jma" title="気象庁 XML"><i class="dot"></i><span class="pill-label">JMA XML</span><span class="pill-value">--</span></button>
+        <span class="pill demo" id="status-demo" hidden><i class="dot"></i><span class="pill-label">演练数据</span><span class="pill-value">DEMO</span></span>
+      </div>
+      <button class="archive-chip" id="archive-chip" title="打开地震档案">
+        <span class="archive-ico"></span>
+        <span id="archive-text">档案 · --</span>
+      </button>
+      <button class="icon-btn" id="btn-chronicle" title="地震档案与统计">
+        <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15V9m4 6V6m4 9v-4"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-settings" title="设置">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="eew-banner" id="eew-banner" aria-live="assertive">
+    <div class="eew-flash"></div>
+    <div class="eew-main">
+      <div class="eew-tag">
+        <span class="eew-flag">緊急地震速報</span>
+        <span class="eew-no" id="eew-no" hidden>①</span>
+        <span class="eew-serial" id="eew-serial">第 1 報</span>
+        <span class="eew-test" id="eew-test" hidden>TEST · 不保存</span>
+      </div>
+      <div class="eew-title" id="eew-title">強い揺れに警戒</div>
+      <div class="eew-sub" id="eew-sub">—</div>
+    </div>
+    <div class="eew-metrics">
+      <div class="metric">
+        <span class="metric-label">予想最大震度</span>
+        <span class="metric-value" id="eew-maxi">—</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">到达倒计时 <em id="eew-basis">推算</em></span>
+        <span class="metric-value mono" id="eew-countdown">--.-<small>s</small></span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">当地预估</span>
+        <span class="metric-value" id="eew-local">—</span>
+      </div>
+    </div>
+    <div class="eew-areas" id="eew-areas"></div>
+    <div class="eew-queue" id="eew-queue" hidden></div>
+    <button class="eew-endtest" id="eew-endtest" hidden>结束测试</button>
+    <button class="eew-close" id="eew-close" title="清除此速报">×</button>
+  </div>
+
+  <main class="main">
+    <aside class="panel feed-panel">
+      <div class="panel-head">
+        <h2>速報流 <em>BULLETINS</em></h2>
+        <div class="feed-filters" id="feed-filters">
+          <button class="chip on" data-filter="all">全部</button>
+          <button class="chip" data-filter="quake">地震</button>
+          <button class="chip" data-filter="eew">速報</button>
+          <button class="chip" data-filter="tsunami">津波</button>
+          <button class="chip" data-filter="longperiod">長周期</button>
+        </div>
+      </div>
+      <div class="feed-list" id="feed-list"></div>
+    </aside>
+
+    <section class="panel map-panel">
+      <div class="map-wrap">
+        <canvas id="map"></canvas>
+        <div class="map-top-left">
+          <div class="map-title">日本列島 <em>REAL-TIME INTENSITY</em></div>
+          <div class="map-mode" id="map-mode"><i></i>LIVE</div>
+          <div class="map-credit">地図 地球地図日本（国土地理院） · 震度 NIED 強震モニタ</div>
+        </div>
+        <div class="map-tools">
+          <button data-layer="intensity" class="tool on" title="震度场">震度</button>
+          <button data-layer="cities" class="tool on" title="城市标注">城市</button>
+          <button data-layer="history" class="tool" title="历史震源">历史</button>
+          <button data-layer="longperiod" class="tool" title="长周期地震动">長周期</button>
+          <button data-layer="tsunami" class="tool on" title="津波沿岸带">津波</button>
+          <span class="tool-sep"></span>
+          <button class="tool" id="zoom-in" title="放大">+</button>
+          <button class="tool" id="zoom-out" title="缩小">−</button>
+        </div>
+        <div class="tsunami-legend" id="tsunami-legend" hidden>
+          <div class="ts-head"><span class="ts-badge">津波</span><span id="ts-title">津波警報</span></div>
+          <div class="ts-row"><i style="background:#B40068"></i>大津波警報</div>
+          <div class="ts-row"><i style="background:#FF2800"></i>津波警報</div>
+          <div class="ts-row"><i style="background:#FFB300"></i>津波注意報</div>
+          <div class="ts-note">沿岸带为示意，非淹没模拟</div>
+        </div>
+        <div class="map-legend" id="map-legend">
+          <div class="legend-bar"></div>
+          <div class="legend-labels"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5弱</span><span>5強</span><span>6弱</span><span>6強</span><span>7</span></div>
+          <div class="legend-caption">計測震度 <em>JMA SCALE</em></div>
+          <div class="legend-bar lp-bar" id="lp-bar" hidden></div>
+          <div class="legend-labels" id="lp-labels" hidden><span>1</span><span>2</span><span>3</span><span>4</span></div>
+          <div class="legend-caption" id="lp-caption" hidden>長周期地震動階級 <em>LP CLASS</em></div>
+        </div>
+        <div class="map-stamp">
+          <div class="stamp-time"><span id="map-ts">--:--:--</span><small>JST</small></div>
+          <div class="stamp-sub" id="map-sub">awaiting data</div>
+        </div>
+        <div class="map-cursor" id="map-cursor"></div>
+      </div>
+    </section>
+
+    <aside class="panel focus-panel">
+      <div class="panel-head"><h2>焦点 <em>FOCUS</em></h2><span class="focus-count" id="focus-count"></span></div>
+      <div class="focus-body" id="focus-body">
+        <div class="empty-state">
+          <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="22"/><circle cx="32" cy="32" r="12"/><path d="M32 4v10M32 50v10M4 32h10M50 32h10"/></svg>
+          <p>选择一个地震事件</p>
+          <span>从左侧速报流或时间轴中选取，查看震源、震度分布与观测点详情。</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <section class="timeline-panel" id="timeline-panel">
+    <div class="timeline-head">
+      <div class="tl-title">时间机器 <em>TIME MACHINE</em></div>
+      <div class="tl-ranges" id="tl-ranges">
+        <button data-range="3600">1时</button>
+        <button data-range="21600">6时</button>
+        <button data-range="86400" class="on">24时</button>
+        <button data-range="604800">7日</button>
+        <button data-range="2592000">30日</button>
+      </div>
+      <div class="tl-play">
+        <button class="tbtn" id="tl-prev" title="上一事件">⏮</button>
+        <button class="tbtn play" id="tl-play" title="播放/暂停"><span class="pp"></span></button>
+        <button class="tbtn" id="tl-next" title="下一事件">⏭</button>
+        <select id="tl-speed" class="speed" title="回放速度">
+          <option value="1">1×</option>
+          <option value="10" selected>10×</option>
+          <option value="60">60×</option>
+          <option value="300">300×</option>
+        </select>
+        <button class="tbtn live" id="tl-live"><i></i>LIVE</button>
+      </div>
+      <div class="tl-clock mono" id="tl-clock">--:--:--</div>
+    </div>
+    <div class="timeline-body">
+      <canvas id="timeline"></canvas>
+      <div class="tl-tip" id="tl-tip"></div>
+    </div>
+    <div class="heat-wrap" id="heat-wrap">
+      <canvas id="heatmap"></canvas>
+      <div class="heat-label">震度时间带 <em>PREFECTURE × TIME</em></div>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="modal-settings" hidden>
+  <div class="modal-card">
+    <div class="modal-head"><h3>设置 <em>SETTINGS</em></h3><button class="modal-close" data-close>×</button></div>
+    <div class="modal-body" id="settings-body"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-chronicle" hidden>
+  <div class="modal-card wide">
+    <div class="modal-head"><h3>地震档案 <em>CHRONICLE</em></h3><button class="modal-close" data-close>×</button></div>
+    <div class="modal-body" id="chronicle-body"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
